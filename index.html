@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nek'zali the Soulcoiler — Raid Knowledge Check</title>
+  <meta name="description" content="Nek'zali the Soulcoiler raid plan knowledge check." />
+  <style>
+    html, body { margin: 0; padding: 0; background: #060E09; }
+    body { min-height: 100vh; }
+    #root { min-height: 100vh; }
+    /* Simple pre-load screen shown while React/Babel boot */
+    #boot {
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: #060E09; color: #3DA873; font-family: Palatino, Georgia, serif;
+      font-size: 14px; letter-spacing: 0.15em; z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <div id="boot">LOADING…</div>
+
+  <!-- React 18 + ReactDOM via import map (resolves the `import ... from "react"` in the JSX) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18.3.1",
+      "react-dom/client": "https://esm.sh/react-dom@18.3.1/client"
+    }
+  }
+  </script>
+
+  <!-- Babel Standalone: compiles JSX in the browser -->
+  <script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
+
+  <!-- Original JSX component, byte-for-byte, followed only by the mount call -->
+  <script type="text/babel" data-type="module" data-presets="react">
+import { useState, useEffect, useRef } from "react";
+
+const AudioEngine = (() => {
+  let ctx = null;
+  const getCtx = () => {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    return ctx;
+  };
+  const play = (fn) => { try { fn(getCtx()); } catch(e) {} };
+  return {
+    click: () => play(c => {
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = "sine";
+      o.frequency.setValueAtTime(800, c.currentTime);
+      o.frequency.exponentialRampToValueAtTime(400, c.currentTime + 0.08);
+      g.gain.setValueAtTime(0.15, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.08);
+      o.connect(g).connect(c.destination);
+      o.start(c.currentTime);
+      o.stop(c.currentTime + 0.08);
+    }),
+    correct: () => play(c => {
+      [0, 0.08, 0.16].forEach((d, i) => {
+        const o = c.createOscillator();
+        const g = c.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime([523, 659, 784][i], c.currentTime + d);
+        g.gain.setValueAtTime(0.12, c.currentTime + d);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + d + 0.2);
+        o.connect(g).connect(c.destination);
+        o.start(c.currentTime + d);
+        o.stop(c.currentTime + d + 0.2);
+      });
+    }),
+    wrong: () => play(c => {
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = "sawtooth";
+      o.frequency.setValueAtTime(250, c.currentTime);
+      o.frequency.exponentialRampToValueAtTime(120, c.currentTime + 0.3);
+      g.gain.setValueAtTime(0.08, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.3);
+      o.connect(g).connect(c.destination);
+      o.start(c.currentTime);
+      o.stop(c.currentTime + 0.3);
+    }),
+    transition: () => play(c => {
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = "sine";
+      o.frequency.setValueAtTime(200, c.currentTime);
+      o.frequency.exponentialRampToValueAtTime(600, c.currentTime + 0.15);
+      o.frequency.exponentialRampToValueAtTime(300, c.currentTime + 0.25);
+      g.gain.setValueAtTime(0.06, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.25);
+      o.connect(g).connect(c.destination);
+      o.start(c.currentTime);
+      o.stop(c.currentTime + 0.25);
+    }),
+    start: () => play(c => {
+      [0, 0.12, 0.24, 0.36].forEach((d, i) => {
+        const o = c.createOscillator();
+        const g = c.createGain();
+        o.type = i < 3 ? "sine" : "triangle";
+        o.frequency.setValueAtTime([262, 330, 392, 523][i], c.currentTime + d);
+        g.gain.setValueAtTime(0.1, c.currentTime + d);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + d + 0.3);
+        o.connect(g).connect(c.destination);
+        o.start(c.currentTime + d);
+        o.stop(c.currentTime + d + 0.3);
+      });
+    }),
+    drumHit: () => play(c => {
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = "sine";
+      o.frequency.setValueAtTime(150, c.currentTime);
+      o.frequency.exponentialRampToValueAtTime(40, c.currentTime + 0.15);
+      g.gain.setValueAtTime(0.25, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.15);
+      o.connect(g).connect(c.destination);
+      o.start(c.currentTime);
+      o.stop(c.currentTime + 0.15);
+      const n = c.createBufferSource();
+      const buf = c.createBuffer(1, c.sampleRate * 0.08, c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+      n.buffer = buf;
+      const ng = c.createGain();
+      ng.gain.setValueAtTime(0.08, c.currentTime);
+      ng.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.08);
+      n.connect(ng).connect(c.destination);
+      n.start(c.currentTime);
+    }),
+    victory: () => play(c => {
+      [0, 0.1, 0.2, 0.3, 0.5].forEach((d, i) => {
+        const o = c.createOscillator();
+        const g = c.createGain();
+        o.type = i === 4 ? "triangle" : "sine";
+        o.frequency.setValueAtTime([392, 494, 587, 659, 784][i], c.currentTime + d);
+        g.gain.setValueAtTime(i === 4 ? 0.15 : 0.1, c.currentTime + d);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + d + (i === 4 ? 0.6 : 0.25));
+        o.connect(g).connect(c.destination);
+        o.start(c.currentTime + d);
+        o.stop(c.currentTime + d + (i === 4 ? 0.6 : 0.25));
+      });
+    })
+  };
+})();
+
+const FONT_DISPLAY = "'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, 'Times New Roman', serif";
+const FONT_BODY = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+
+const QUESTIONS = [
+  {
+    question: "In Phase 1, how do we handle the adds and their positioning?",
+    options: [
+      { text: "Kill every add instantly the moment it spawns, wherever it is", correct: false },
+      { text: "Let the adds reach the Soul Well since it only damages the tank", correct: false },
+      { text: "Kill adds before they reach the Soul Well, drag the boss to the biggest clump, and CC the far away adds instead of killing every add immediately", correct: true },
+      { text: "Stack all adds inside the Soul Well to despawn them", correct: false }
+    ],
+    note: null
+  },
+  {
+    question: "If you are targeted by Possession Barrage (BIG GREEN CIRCLE), what do you do?",
+    options: [
+      { text: "Drop it on the edge of the room in the green circles", correct: false },
+      { text: "Take it away from the raid, and make sure your melee don't interfere", correct: true },
+      { text: "Run it into the biggest clump of adds", correct: false },
+      { text: "Stack it in the middle on top of the Soul Well", correct: false }
+    ],
+    note: "NOTE: THIS IS ONLY FOR TANKS, BUT MAKE SURE YOU STAY AWAY FROM THEM WHEN THEY HAVE A GIANT GREEN CIRCLE"
+  },
+  {
+    question: "If you are targeted by Essence Rend (SMALL green circle), what do you do?",
+    options: [
+      { text: "Take it as far away from the raid as possible and keep moving", correct: false },
+      { text: "Stack it in the center on top of the Soul Well", correct: false },
+      { text: "Stand still in the raid and let healers heal through it", correct: false },
+      { text: "Drop it on the edge of the room, it can be dispelled off melee so they don't lose uptime", correct: true }
+    ],
+    note: null
+  },
+  {
+    question: "What starts the Intermission, and how do we end it?",
+    options: [
+      { text: "It starts when the first add reaches the Soul Well, and ends after 30 seconds", correct: false },
+      { text: "It starts at 50% boss health or 100 energy; an Echo of Jawae spawns while the real boss is immune, and we kill 2 Echo adds to end it", correct: true },
+      { text: "It starts when a tank dies, and ends by killing the real boss", correct: false },
+      { text: "It starts at 10% health and ends on its own with no action needed", correct: false }
+    ],
+    note: null
+  },
+  {
+    question: "During the Intermission, what is the purpose of Hungering Pyre and who soaks it?",
+    options: [
+      { text: "It is a tank-only soak and everyone else runs away", correct: false },
+      { text: "Nobody soaks it; the whole raid spreads out to avoid the fire", correct: false },
+      { text: "It is a group soak that burns the corpses so adds can't respawn; the majority of the raid soaks it, leaving a group of ranged DPS out", correct: true },
+      { text: "It is just raid damage to heal through, with no other purpose", correct: false }
+    ],
+    note: null
+  },
+  {
+    question: "If you do NOT soak Hungering Pyre, what do you get and what is it for?",
+    options: [
+      { text: "You get a healing absorb that a healer must dispel", correct: false },
+      { text: "You get the Slithering Flames debuff, used to burn any leftover corpse that is not clumped with the others; goal is 0 corpses left for P2", correct: true },
+      { text: "You get a damage buff to use on the Echo add", correct: false },
+      { text: "You get nothing; not soaking has no effect", correct: false }
+    ],
+    note: null
+  }
+];
+
+const TrollMask = ({ size = 60 }) => (
+  <svg width={size} height={size} viewBox="0 0 80 80" fill="none">
+    <path d="M40 8 C20 8 12 24 12 40 C12 56 24 72 40 72 C56 72 68 56 68 40 C68 24 60 8 40 8Z" fill="#0A1F14" stroke="#2D8B5E" strokeWidth="1.5" opacity="0.6"/>
+    <path d="M24 30 L18 22 L28 28Z" fill="#2D8B5E" opacity="0.5"/>
+    <path d="M56 30 L62 22 L52 28Z" fill="#2D8B5E" opacity="0.5"/>
+    <ellipse cx="28" cy="34" rx="8" ry="6" fill="none" stroke="#3DA873" strokeWidth="1.5" opacity="0.7"/>
+    <ellipse cx="52" cy="34" rx="8" ry="6" fill="none" stroke="#3DA873" strokeWidth="1.5" opacity="0.7"/>
+    <circle cx="28" cy="34" r="3" fill="#3DA873" opacity="0.4"/>
+    <circle cx="52" cy="34" r="3" fill="#3DA873" opacity="0.4"/>
+    <path d="M34 46 Q40 52 46 46" stroke="#3DA873" strokeWidth="1.5" fill="none" opacity="0.6"/>
+    <path d="M32 48 L30 56" stroke="#C9A84C" strokeWidth="1.5" opacity="0.5"/>
+    <path d="M36 50 L35 58" stroke="#C9A84C" strokeWidth="1.5" opacity="0.5"/>
+    <path d="M40 50 L40 60" stroke="#C9A84C" strokeWidth="1.5" opacity="0.5"/>
+    <path d="M44 50 L45 58" stroke="#C9A84C" strokeWidth="1.5" opacity="0.5"/>
+    <path d="M48 48 L50 56" stroke="#C9A84C" strokeWidth="1.5" opacity="0.5"/>
+    <path d="M16 28 Q12 20 16 14" stroke="#C9A84C" strokeWidth="1" opacity="0.3"/>
+    <path d="M64 28 Q68 20 64 14" stroke="#C9A84C" strokeWidth="1" opacity="0.3"/>
+    <circle cx="20" cy="42" r="2" fill="#C9A84C" opacity="0.2"/>
+    <circle cx="60" cy="42" r="2" fill="#C9A84C" opacity="0.2"/>
+    <path d="M24 18 L28 14 L32 18" stroke="#2D8B5E" strokeWidth="1" opacity="0.3" fill="none"/>
+    <path d="M48 18 L52 14 L56 18" stroke="#2D8B5E" strokeWidth="1" opacity="0.3" fill="none"/>
+  </svg>
+);
+
+const SkullSVG = ({ size = 28, color = "#3DA873", style = {} }) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" style={style}>
+    <ellipse cx="32" cy="28" rx="22" ry="24" fill={color} opacity="0.1" stroke={color} strokeWidth="2"/>
+    <circle cx="22" cy="24" r="6" fill="none" stroke={color} strokeWidth="2"/>
+    <circle cx="42" cy="24" r="6" fill="none" stroke={color} strokeWidth="2"/>
+    <path d="M28 38 L32 44 L36 38" stroke={color} strokeWidth="2" fill="none"/>
+    <path d="M24 50 L24 58" stroke={color} strokeWidth="2"/>
+    <path d="M32 52 L32 60" stroke={color} strokeWidth="2"/>
+    <path d="M40 50 L40 58" stroke={color} strokeWidth="2"/>
+    <path d="M20 48 Q32 54 44 48" stroke={color} strokeWidth="2" fill="none"/>
+    <line x1="14" y1="18" x2="10" y2="10" stroke={color} strokeWidth="2"/>
+    <line x1="50" y1="18" x2="54" y2="10" stroke={color} strokeWidth="2"/>
+    <circle cx="22" cy="24" r="2.5" fill={color} opacity="0.3"/>
+    <circle cx="42" cy="24" r="2.5" fill={color} opacity="0.3"/>
+  </svg>
+);
+
+const MayanBorder = ({ width = "100%" }) => (
+  <svg width={width} height="16" viewBox="0 0 600 16" preserveAspectRatio="none" style={{ display: "block" }}>
+    <pattern id="mayanP" x="0" y="0" width="40" height="16" patternUnits="userSpaceOnUse">
+      <rect x="0" y="6" width="16" height="4" fill="#2D8B5E" opacity="0.3"/>
+      <rect x="4" y="2" width="8" height="12" fill="#2D8B5E" opacity="0.2"/>
+      <rect x="20" y="4" width="4" height="8" fill="#C9A84C" opacity="0.25"/>
+      <rect x="28" y="6" width="8" height="4" fill="#2D8B5E" opacity="0.2"/>
+      <circle cx="34" cy="8" r="1.5" fill="#C9A84C" opacity="0.3"/>
+    </pattern>
+    <rect width="600" height="16" fill="url(#mayanP)"/>
+  </svg>
+);
+
+const RuneGlyph = ({ index = 0, size = 40 }) => {
+  const glyphs = [
+    <svg key="0" width={size} height={size} viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="#2D8B5E" strokeWidth="1.5" opacity="0.2"/><path d="M20 6 L20 14 M20 26 L20 34 M6 20 L14 20 M26 20 L34 20" stroke="#2D8B5E" strokeWidth="1.5" opacity="0.2"/><rect x="14" y="14" width="12" height="12" fill="none" stroke="#C9A84C" strokeWidth="1" opacity="0.15" transform="rotate(45 20 20)"/></svg>,
+    <svg key="1" width={size} height={size} viewBox="0 0 40 40"><path d="M20 4 L36 20 L20 36 L4 20 Z" fill="none" stroke="#2D8B5E" strokeWidth="1.5" opacity="0.2"/><circle cx="20" cy="20" r="5" fill="none" stroke="#3DA873" strokeWidth="1" opacity="0.15"/></svg>,
+    <svg key="2" width={size} height={size} viewBox="0 0 40 40"><rect x="8" y="8" width="24" height="24" fill="none" stroke="#2D8B5E" strokeWidth="1.5" opacity="0.2"/><path d="M8 8 L32 32 M32 8 L8 32" stroke="#2D8B5E" strokeWidth="0.8" opacity="0.15"/><circle cx="20" cy="20" r="4" fill="#2D8B5E" opacity="0.1"/></svg>,
+    <svg key="3" width={size} height={size} viewBox="0 0 40 40"><path d="M20 2 L26 14 L38 16 L30 26 L32 38 L20 32 L8 38 L10 26 L2 16 L14 14 Z" fill="none" stroke="#3DA873" strokeWidth="1" opacity="0.15"/><circle cx="20" cy="20" r="3" fill="#C9A84C" opacity="0.1"/></svg>,
+    <svg key="4" width={size} height={size} viewBox="0 0 40 40"><path d="M12 4 L12 36 M28 4 L28 36" stroke="#2D8B5E" strokeWidth="1.5" opacity="0.15"/><path d="M4 12 L36 12 M4 28 L36 28" stroke="#2D8B5E" strokeWidth="1.5" opacity="0.15"/><circle cx="20" cy="20" r="6" fill="none" stroke="#C9A84C" strokeWidth="1" opacity="0.2"/></svg>
+  ];
+  return glyphs[index % glyphs.length];
+};
+
+const Particles = ({ trigger }) => {
+  const [particles, setParticles] = useState([]);
+  useEffect(() => {
+    if (!trigger) return;
+    const ps = Array.from({ length: 16 }, (_, i) => ({
+      id: Date.now() + i,
+      x: 25 + Math.random() * 50,
+      y: 25 + Math.random() * 50,
+      size: 3 + Math.random() * 6,
+      dur: 0.5 + Math.random() * 0.9,
+      delay: Math.random() * 0.25,
+      color: Math.random() > 0.4 ? "#3DA873" : "#C9A84C"
+    }));
+    setParticles(ps);
+    const t = setTimeout(() => setParticles([]), 1600);
+    return () => clearTimeout(t);
+  }, [trigger]);
+  return (
+    <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 9999 }}>
+      {particles.map(p => (
+        <div key={p.id} style={{
+          position: "absolute", left: `${p.x}%`, top: `${p.y}%`,
+          width: p.size, height: p.size, borderRadius: "50%",
+          background: p.color, boxShadow: `0 0 8px ${p.color}`,
+          animation: `pFly ${p.dur}s ease-out ${p.delay}s forwards`,
+          opacity: 0
+        }}/>
+      ))}
+    </div>
+  );
+};
+
+const VineDecor = ({ side = "left" }) => (
+  <div style={{
+    position: "absolute", [side]: 0, top: 0, bottom: 0, width: 60,
+    pointerEvents: "none", opacity: 0.12, overflow: "hidden"
+  }}>
+    <svg width="60" height="100%" viewBox="0 0 60 800" preserveAspectRatio="none">
+      <path d={side === "left"
+        ? "M30 0 Q10 100 25 200 Q40 300 15 400 Q5 500 30 600 Q45 700 20 800"
+        : "M30 0 Q50 100 35 200 Q20 300 45 400 Q55 500 30 600 Q15 700 40 800"
+      } stroke="#2D8B5E" strokeWidth="3" fill="none"/>
+      {[100,250,400,550,700].map((y,i) => (
+        <g key={i}>
+          <ellipse cx={side === "left" ? 20 + (i%2)*15 : 25 + (i%2)*10} cy={y} rx="10" ry="6" fill="#1A5C3A" opacity="0.5" transform={`rotate(${side === "left" ? -20 + i*10 : 20 - i*10} ${side === "left" ? 20 + (i%2)*15 : 25 + (i%2)*10} ${y})`}/>
+        </g>
+      ))}
+    </svg>
+  </div>
+);
+
+const SharePopup = ({ onClose }) => (
+  <div style={{
+    position: "fixed", inset: 0, zIndex: 10000,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)",
+    animation: "fadeIn 0.3s ease"
+  }} onClick={onClose}>
+    <div style={{
+      background: "linear-gradient(135deg, #0F231A 0%, #1A2E22 100%)",
+      border: "2px solid #3DA873", borderRadius: 16,
+      padding: "40px 36px", maxWidth: 380, textAlign: "center",
+      animation: "popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+      boxShadow: "0 0 40px rgba(61,168,115,0.3)"
+    }} onClick={e => e.stopPropagation()}>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>📸</div>
+      <p style={{
+        fontFamily: FONT_BODY, fontSize: 18, color: "#C8E0D0",
+        lineHeight: 1.6, marginBottom: 24
+      }}>
+        bro take a screenshot<br/>
+        <span style={{ color: "#4A7A58", fontSize: 14 }}>im not implementing this shi</span>
+      </p>
+      <button onClick={onClose} style={{
+        fontFamily: FONT_DISPLAY, fontSize: 13, fontWeight: 700,
+        letterSpacing: "0.1em", textTransform: "uppercase",
+        padding: "10px 28px",
+        background: "linear-gradient(135deg, #3DA873 0%, #1A5C3A 100%)",
+        color: "#060E09", border: "none", borderRadius: 8,
+        cursor: "pointer", transition: "all 0.3s ease"
+      }}>
+        Fair Enough
+      </button>
+    </div>
+  </div>
+);
+
+const LoadingScreen = () => {
+  const [dots, setDots] = useState(0);
+  const [tipIdx, setTipIdx] = useState(0);
+  const tips = [
+    "Channeling ancient troll magic",
+    "Awakening the spirits of Ula-Tek",
+    "Deciphering Amani glyphs",
+    "The Soulcoiler stirs"
+  ];
+
+  useEffect(() => {
+    const d = setInterval(() => setDots(p => (p + 1) % 4), 400);
+    const t = setInterval(() => setTipIdx(p => (p + 1) % tips.length), 2500);
+    return () => { clearInterval(d); clearInterval(t); };
+  }, []);
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 10000,
+      background: "linear-gradient(180deg, #060E09 0%, #0A1A10 50%, #081208 100%)",
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 32
+    }}>
+      <div style={{ animation: "maskFloat 3s ease-in-out infinite" }}>
+        <TrollMask size={90}/>
+      </div>
+      <div style={{ position: "relative", width: 60, height: 60 }}>
+        <div style={{
+          width: 60, height: 60, borderRadius: "50%",
+          border: "3px solid #1E3D2A", borderTopColor: "#3DA873",
+          animation: "spinLoader 1s linear infinite"
+        }}/>
+        <div style={{
+          position: "absolute", inset: 8, borderRadius: "50%",
+          border: "2px solid #1E3D2A", borderBottomColor: "#C9A84C",
+          animation: "spinLoader 1.5s linear infinite reverse"
+        }}/>
+      </div>
+      <div style={{
+        fontFamily: FONT_DISPLAY, fontSize: 15, color: "#3DA873",
+        letterSpacing: "0.1em", textAlign: "center"
+      }}>
+        {tips[tipIdx]}{".".repeat(dots)}
+      </div>
+      <MayanBorder width="200px"/>
+    </div>
+  );
+};
+
+export default function NekzaliQuiz() {
+  const [loading, setLoading] = useState(true);
+  const [phase, setPhase] = useState("intro");
+  const [name, setName] = useState("");
+  const [currentQ, setCurrentQ] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [answered, setAnswered] = useState(false);
+  const [score, setScore] = useState(0);
+  const [transitioning, setTransitioning] = useState(false);
+  const [particleTrigger, setParticleTrigger] = useState(0);
+  const [answers, setAnswers] = useState([]);
+  const [shakeIdx, setShakeIdx] = useState(null);
+  const [showSharePopup, setShowSharePopup] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 2800);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (!loading && phase === "intro" && inputRef.current) inputRef.current.focus();
+  }, [loading, phase]);
+
+  const handleStart = () => {
+    if (!name.trim()) return;
+    AudioEngine.start();
+    setTransitioning(true);
+    setTimeout(() => { setPhase("quiz"); setTransitioning(false); }, 600);
+  };
+
+  const handleSelect = (idx) => {
+    if (answered) return;
+    AudioEngine.click();
+    setSelected(idx);
+    setAnswered(true);
+    const isCorrect = QUESTIONS[currentQ].options[idx].correct;
+    if (isCorrect) {
+      setTimeout(() => AudioEngine.correct(), 100);
+      setScore(s => s + 1);
+      setParticleTrigger(p => p + 1);
+    } else {
+      setTimeout(() => AudioEngine.wrong(), 100);
+      setShakeIdx(idx);
+      setTimeout(() => setShakeIdx(null), 600);
+    }
+    setAnswers(a => [...a, { question: currentQ, selected: idx, correct: isCorrect }]);
+  };
+
+  const handleNext = () => {
+    AudioEngine.transition();
+    setTransitioning(true);
+    setTimeout(() => {
+      if (currentQ < QUESTIONS.length - 1) {
+        setCurrentQ(q => q + 1);
+        setSelected(null);
+        setAnswered(false);
+        setTransitioning(false);
+      } else {
+        setPhase("results");
+        setTransitioning(false);
+        setTimeout(() => AudioEngine.victory(), 300);
+      }
+    }, 500);
+  };
+
+  const getOptionStyle = (idx) => {
+    const base = {
+      padding: "16px 20px", borderRadius: "8px",
+      border: "2px solid #1E3D2A",
+      background: "linear-gradient(135deg, #0A1A10 0%, #0F231A 100%)",
+      color: "#C8E0D0", cursor: answered ? "default" : "pointer",
+      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+      fontSize: "15px", lineHeight: "1.5", position: "relative",
+      overflow: "hidden", textAlign: "left", fontFamily: FONT_BODY,
+      animation: shakeIdx === idx ? "shake 0.5s ease" : "none"
+    };
+    if (!answered) return base;
+    if (QUESTIONS[currentQ].options[idx].correct) {
+      return { ...base,
+        border: "2px solid #3DA873",
+        background: "linear-gradient(135deg, #0A2E1C 0%, #0F3D28 100%)",
+        boxShadow: "0 0 24px rgba(61,168,115,0.25), inset 0 0 20px rgba(61,168,115,0.08)"
+      };
+    }
+    if (idx === selected && !QUESTIONS[currentQ].options[idx].correct) {
+      return { ...base,
+        border: "2px solid #8B2335",
+        background: "linear-gradient(135deg, #1E0A10 0%, #2E0F18 100%)",
+        boxShadow: "0 0 20px rgba(139,35,53,0.25)"
+      };
+    }
+    return { ...base, opacity: 0.35 };
+  };
+
+  const percent = Math.round((score / QUESTIONS.length) * 100);
+
+  return (
+    <div style={{
+      minHeight: "100vh",
+      background: "linear-gradient(180deg, #060E09 0%, #0A1A10 30%, #0D1F14 60%, #081208 100%)",
+      fontFamily: FONT_BODY, color: "#C8E0D0",
+      position: "relative", overflow: "hidden"
+    }}>
+      <style>{`
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-15px); } }
+        @keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }
+        @keyframes pulseGlow { 0%,100% { box-shadow: 0 0 20px rgba(61,168,115,0.15); } 50% { box-shadow: 0 0 40px rgba(61,168,115,0.3); } }
+        @keyframes pFly { 0% { opacity:1; transform: translate(0,0) scale(1); } 100% { opacity:0; transform: translate(40px,-70px) scale(0); } }
+        @keyframes slideInOption { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes floatGlyph { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-12px) rotate(4deg); } }
+        @keyframes correctPulse { 0% { transform: scale(1); } 50% { transform: scale(1.015); } 100% { transform: scale(1); } }
+        @keyframes stampIn { 0% { transform: scale(2.5) rotate(-10deg); opacity: 0; } 60% { transform: scale(0.95) rotate(1deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); } }
+        @keyframes scoreCount { from { opacity:0; transform: scale(0.5); } to { opacity:1; transform: scale(1); } }
+        @keyframes torchFlicker { 0%,100% { opacity: 0.6; filter: blur(4px); } 25% { opacity: 0.8; filter: blur(3px); } 50% { opacity: 0.5; filter: blur(5px); } 75% { opacity: 0.7; filter: blur(4px); } }
+        @keyframes maskFloat { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-8px) rotate(2deg); } }
+        @keyframes spinLoader { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes popIn { 0% { transform: scale(0.5) translateY(20px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+        .opt-btn { width: 100%; text-align: left; display: block; }
+        .opt-btn:not([disabled]):hover { border-color: #3DA873 !important; background: linear-gradient(135deg, #0F231A 0%, #153D28 100%) !important; transform: translateX(4px); box-shadow: 0 4px 20px rgba(61,168,115,0.15); }
+        .opt-btn:not([disabled]):active { transform: scale(0.98); }
+        .glow-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(61,168,115,0.35) !important; }
+        .glow-btn:active { transform: scale(0.97); }
+        .name-input:focus { outline: none; border-color: #3DA873; box-shadow: 0 0 20px rgba(61,168,115,0.2); }
+        .name-input::placeholder { color: #3D5A42; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #060E09; }
+        ::-webkit-scrollbar-thumb { background: #1E3D2A; border-radius: 3px; }
+      `}</style>
+
+      {loading && <LoadingScreen/>}
+      {showSharePopup && <SharePopup onClose={() => setShowSharePopup(false)}/>}
+
+      <Particles trigger={particleTrigger}/>
+      <VineDecor side="left"/>
+      <VineDecor side="right"/>
+
+      <div style={{ position: "fixed", left: 30, top: "15%", pointerEvents: "none", animation: "torchFlicker 2s ease infinite" }}>
+        <div style={{ width: 12, height: 20, borderRadius: "50% 50% 30% 30%", background: "radial-gradient(circle, #3DA873 0%, #1A5C3A 60%, transparent 100%)" }}/>
+      </div>
+      <div style={{ position: "fixed", right: 30, top: "15%", pointerEvents: "none", animation: "torchFlicker 2s ease infinite 0.5s" }}>
+        <div style={{ width: 12, height: 20, borderRadius: "50% 50% 30% 30%", background: "radial-gradient(circle, #3DA873 0%, #1A5C3A 60%, transparent 100%)" }}/>
+      </div>
+
+      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0, overflow: "hidden" }}>
+        {[0,1,2,3,4,5,6,7,8,9].map(i => (
+          <div key={i} style={{
+            position: "absolute",
+            left: `${(i * 11 + 3) % 92}%`, top: `${(i * 13 + 5) % 88}%`,
+            animation: `floatGlyph ${4 + i * 0.6}s ease-in-out ${i * 0.4}s infinite`
+          }}>
+            <RuneGlyph index={i} size={25 + (i % 3) * 12}/>
+          </div>
+        ))}
+      </div>
+
+      {!loading && (
+        <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 20px", position: "relative", zIndex: 1 }}>
+
+          {phase === "intro" && (
+            <div style={{
+              animation: transitioning ? "fadeOut 0.5s ease forwards" : "fadeInUp 0.8s ease",
+              display: "flex", flexDirection: "column", alignItems: "center",
+              minHeight: "80vh", justifyContent: "center", gap: 28
+            }}>
+              <div style={{ animation: "maskFloat 4s ease-in-out infinite" }}>
+                <TrollMask size={80}/>
+              </div>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <SkullSVG size={28}/><SkullSVG size={20} style={{ opacity: 0.4 }}/><SkullSVG size={28}/>
+              </div>
+              <MayanBorder width="280px"/>
+              <h1 style={{
+                fontFamily: FONT_DISPLAY, fontSize: "clamp(28px, 5vw, 46px)",
+                fontWeight: 900, textAlign: "center", lineHeight: 1.15,
+                background: "linear-gradient(180deg, #C8E0D0 0%, #3DA873 40%, #1A5C3A 100%)",
+                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                letterSpacing: "0.02em"
+              }}>
+                Nek'zali<br/>the Soulcoiler
+              </h1>
+              <p style={{
+                fontFamily: FONT_DISPLAY, fontSize: 13, letterSpacing: "0.2em",
+                textTransform: "uppercase", color: "#4A7A58", textAlign: "center"
+              }}>
+                Raid Plan Knowledge Check
+              </p>
+              <MayanBorder width="280px"/>
+              <div style={{
+                width: "100%", maxWidth: 420, padding: "32px",
+                background: "linear-gradient(135deg, #0A1A10 0%, #0F231A 100%)",
+                borderRadius: 12, border: "1px solid #1E3D2A",
+                animation: "pulseGlow 3s ease infinite", position: "relative"
+              }}>
+                <div style={{ position: "absolute", top: -8, left: "50%", transform: "translateX(-50%)" }}>
+                  <SkullSVG size={18} color="#C9A84C"/>
+                </div>
+                <label style={{
+                  display: "block", fontFamily: FONT_DISPLAY, fontSize: 13,
+                  letterSpacing: "0.15em", textTransform: "uppercase", color: "#3DA873", marginBottom: 12
+                }}>
+                  Enter Your Character Name
+                </label>
+                <input ref={inputRef} className="name-input" type="text" value={name}
+                  onChange={e => setName(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") handleStart(); }}
+                  placeholder="e.g. Thrall, Jaina, Zul'jin..."
+                  style={{
+                    width: "100%", padding: "14px 18px", background: "#060E09",
+                    border: "2px solid #1E3D2A", borderRadius: 8, color: "#C8E0D0",
+                    fontSize: 18, fontFamily: FONT_BODY, transition: "all 0.3s ease"
+                  }}
+                />
+              </div>
+              <button className="glow-btn" onClick={handleStart} disabled={!name.trim()}
+                style={{
+                  fontFamily: FONT_DISPLAY, fontSize: 16, fontWeight: 700,
+                  letterSpacing: "0.12em", textTransform: "uppercase", padding: "16px 48px",
+                  background: name.trim()
+                    ? "linear-gradient(135deg, #3DA873 0%, #1A5C3A 100%)"
+                    : "linear-gradient(135deg, #1E3D2A 0%, #0F231A 100%)",
+                  color: name.trim() ? "#060E09" : "#3D5A42",
+                  border: "none", borderRadius: 8,
+                  cursor: name.trim() ? "pointer" : "default",
+                  transition: "all 0.3s ease",
+                  boxShadow: name.trim() ? "0 4px 20px rgba(61,168,115,0.3)" : "none"
+                }}>
+                Begin the Trial
+              </button>
+              <p style={{ fontSize: 13, color: "#3D5A42", textAlign: "center", maxWidth: 400, lineHeight: 1.6 }}>
+                Lust is at the start of P2. Answer all questions based on our raid plan.
+              </p>
+            </div>
+          )}
+
+          {phase === "quiz" && (
+            <div style={{ animation: transitioning ? "fadeOut 0.4s ease forwards" : "fadeInUp 0.5s ease" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <SkullSVG size={20}/>
+                  <span style={{ fontFamily: FONT_DISPLAY, fontSize: 14, color: "#3DA873", fontWeight: 600 }}>{name}</span>
+                </div>
+                <span style={{ fontFamily: FONT_DISPLAY, fontSize: 13, color: "#4A7A58", letterSpacing: "0.1em" }}>
+                  {score}/{QUESTIONS.length}
+                </span>
+              </div>
+              <MayanBorder/>
+              <div style={{ height: 5, background: "#0A1A10", borderRadius: 3, margin: "16px 0 28px", overflow: "hidden", border: "1px solid #1E3D2A" }}>
+                <div style={{
+                  height: "100%",
+                  width: `${((currentQ + (answered ? 1 : 0)) / QUESTIONS.length) * 100}%`,
+                  background: "linear-gradient(90deg, #1A5C3A, #3DA873, #C9A84C)",
+                  borderRadius: 3, transition: "width 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
+                  boxShadow: "0 0 12px rgba(61,168,115,0.4)"
+                }}/>
+              </div>
+              <div style={{
+                fontFamily: FONT_DISPLAY, fontSize: 11, letterSpacing: "0.2em",
+                textTransform: "uppercase", color: "#4A7A58", marginBottom: 12
+              }}>
+                Question {currentQ + 1} of {QUESTIONS.length}
+              </div>
+              <h2 style={{
+                fontFamily: FONT_DISPLAY, fontSize: "clamp(17px, 3vw, 21px)",
+                fontWeight: 700, color: "#C8E0D0", lineHeight: 1.4,
+                marginBottom: 24, paddingBottom: 18, borderBottom: "1px solid #1E3D2A"
+              }}>
+                {QUESTIONS[currentQ].question}
+              </h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {QUESTIONS[currentQ].options.map((opt, idx) => (
+                  <button key={idx} className="opt-btn" disabled={answered}
+                    onClick={() => handleSelect(idx)}
+                    style={{
+                      ...getOptionStyle(idx),
+                      animationName: !transitioning ? "slideInOption" : undefined,
+                      animationDuration: "0.4s", animationDelay: `${idx * 0.08}s`,
+                      animationFillMode: "backwards",
+                      ...(answered && QUESTIONS[currentQ].options[idx].correct ? { animation: "correctPulse 0.5s ease" } : {}),
+                      ...(shakeIdx === idx ? { animation: "shake 0.5s ease" } : {})
+                    }}>
+                    <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                      <div style={{
+                        width: 26, height: 26, minWidth: 26, borderRadius: "50%",
+                        border: `2px solid ${
+                          answered
+                            ? QUESTIONS[currentQ].options[idx].correct ? "#3DA873"
+                              : idx === selected ? "#8B2335" : "#1E3D2A"
+                            : "#1E3D2A"
+                        }`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 13, fontWeight: 600,
+                        color: answered
+                          ? QUESTIONS[currentQ].options[idx].correct ? "#3DA873"
+                            : idx === selected ? "#8B2335" : "#3D5A42"
+                          : "#4A7A58",
+                        transition: "all 0.3s ease", flexShrink: 0, marginTop: 1,
+                        background: answered && QUESTIONS[currentQ].options[idx].correct
+                          ? "rgba(61,168,115,0.15)"
+                          : answered && idx === selected && !QUESTIONS[currentQ].options[idx].correct
+                            ? "rgba(139,35,53,0.15)" : "transparent"
+                      }}>
+                        {answered && QUESTIONS[currentQ].options[idx].correct ? "✓"
+                          : answered && idx === selected && !QUESTIONS[currentQ].options[idx].correct ? "✗"
+                          : String.fromCharCode(65 + idx)}
+                      </div>
+                      <span style={{ paddingTop: 2 }}>{opt.text}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {answered && selected !== null && !QUESTIONS[currentQ].options[selected].correct && (
+                <div style={{
+                  marginTop: 16, padding: "14px 18px",
+                  background: "linear-gradient(135deg, #1E0A10 0%, #140A0E 100%)",
+                  border: "1px solid #5C1A25", borderRadius: 8, fontSize: 14,
+                  color: "#E8A0AB", animation: "fadeInUp 0.4s ease", lineHeight: 1.5
+                }}>
+                  <span style={{ fontWeight: 600, color: "#FF6B7F" }}>Incorrect.</span> The right answer was highlighted above.
+                </div>
+              )}
+
+              {answered && selected !== null && QUESTIONS[currentQ].options[selected].correct && (
+                <div style={{
+                  marginTop: 16, padding: "14px 18px",
+                  background: "linear-gradient(135deg, #0A2E1C 0%, #081A12 100%)",
+                  border: "1px solid #1A5C3A", borderRadius: 8, fontSize: 14,
+                  color: "#7FE8C0", animation: "fadeInUp 0.4s ease", lineHeight: 1.5
+                }}>
+                  <span style={{ fontWeight: 600, color: "#4FFFB0" }}>Correct!</span> Well done, {name}.
+                </div>
+              )}
+
+              {answered && QUESTIONS[currentQ].note && (
+                <div style={{
+                  marginTop: 16, padding: "16px 18px",
+                  background: "linear-gradient(135deg, #1A1A08 0%, #14140A 100%)",
+                  border: "2px solid #C9A84C", borderRadius: 8, fontSize: 14,
+                  color: "#E8DCC8", animation: "fadeInUp 0.5s ease 0.15s backwards",
+                  lineHeight: 1.6, display: "flex", gap: 12, alignItems: "flex-start"
+                }}>
+                  <span style={{ fontSize: 20, lineHeight: 1 }}>⚠</span>
+                  <span>
+                    <strong style={{ color: "#C9A84C" }}>{QUESTIONS[currentQ].note.split(",")[0]}</strong>
+                    {QUESTIONS[currentQ].note.includes(",") && "," + QUESTIONS[currentQ].note.split(",").slice(1).join(",")}
+                  </span>
+                </div>
+              )}
+
+              {answered && (
+                <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end", animation: "fadeInUp 0.4s ease 0.2s backwards" }}>
+                  <button className="glow-btn" onClick={handleNext}
+                    style={{
+                      fontFamily: FONT_DISPLAY, fontSize: 14, fontWeight: 700,
+                      letterSpacing: "0.1em", textTransform: "uppercase", padding: "12px 32px",
+                      background: "linear-gradient(135deg, #3DA873 0%, #1A5C3A 100%)",
+                      color: "#060E09", border: "none", borderRadius: 8, cursor: "pointer",
+                      transition: "all 0.3s ease", boxShadow: "0 4px 15px rgba(61,168,115,0.25)"
+                    }}>
+                    {currentQ < QUESTIONS.length - 1 ? "Next Question →" : "See Results →"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {phase === "results" && (
+            <div style={{
+              animation: transitioning ? "fadeOut 0.4s ease forwards" : "fadeInUp 0.6s ease",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 24, paddingTop: 32
+            }}>
+              <div style={{ animation: "stampIn 0.6s ease" }}>
+                <TrollMask size={70}/>
+              </div>
+              <MayanBorder width="200px"/>
+              <h1 style={{
+                fontFamily: FONT_DISPLAY, fontSize: "clamp(24px, 4vw, 36px)",
+                fontWeight: 900, textAlign: "center",
+                background: percent >= 80
+                  ? "linear-gradient(180deg, #7FE8C0, #1A8B6E)"
+                  : percent >= 50
+                    ? "linear-gradient(180deg, #C8E0D0, #C9A84C)"
+                    : "linear-gradient(180deg, #E8A0AB, #8B2335)",
+                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent"
+              }}>
+                {percent === 100 ? "Flawless Victory!" : percent >= 80 ? "Well Prepared!" : percent >= 50 ? "Almost There..." : "Study Up, Champion"}
+              </h1>
+              <div style={{ fontFamily: FONT_DISPLAY, fontSize: 14, color: "#4A7A58", letterSpacing: "0.1em" }}>
+                {name}'s Trial Results
+              </div>
+              <div style={{ display: "flex", gap: 32, animation: "scoreCount 0.8s ease 0.3s backwards" }}>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{
+                    fontFamily: FONT_DISPLAY, fontSize: 56, fontWeight: 900, lineHeight: 1,
+                    background: "linear-gradient(180deg, #C8E0D0, #3DA873)",
+                    WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent"
+                  }}>{score}/{QUESTIONS.length}</div>
+                  <div style={{ fontFamily: FONT_DISPLAY, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "#3D5A42", marginTop: 8 }}>Correct</div>
+                </div>
+                <div style={{ width: 1, background: "#1E3D2A" }}/>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{
+                    fontFamily: FONT_DISPLAY, fontSize: 56, fontWeight: 900, lineHeight: 1,
+                    background: percent >= 80
+                      ? "linear-gradient(180deg, #7FE8C0, #1A8B6E)"
+                      : percent >= 50
+                        ? "linear-gradient(180deg, #C8E0D0, #C9A84C)"
+                        : "linear-gradient(180deg, #E8A0AB, #8B2335)",
+                    WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent"
+                  }}>{percent}%</div>
+                  <div style={{ fontFamily: FONT_DISPLAY, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "#3D5A42", marginTop: 8 }}>Score</div>
+                </div>
+              </div>
+              <MayanBorder width="320px"/>
+              <div style={{ width: "100%", maxWidth: 520, display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+                <div style={{ fontFamily: FONT_DISPLAY, fontSize: 12, letterSpacing: "0.15em", textTransform: "uppercase", color: "#4A7A58", marginBottom: 4 }}>
+                  Breakdown
+                </div>
+                {answers.map((a, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", gap: 12,
+                    padding: "10px 14px", background: "#0A1A10", borderRadius: 6,
+                    border: `1px solid ${a.correct ? "#1A3D28" : "#3D1A20"}`,
+                    animation: `fadeInUp 0.3s ease ${i * 0.06}s backwards`, fontSize: 14
+                  }}>
+                    <div style={{
+                      width: 22, height: 22, minWidth: 22, borderRadius: "50%",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 12, fontWeight: 700,
+                      background: a.correct ? "rgba(61,168,115,0.2)" : "rgba(139,35,53,0.2)",
+                      color: a.correct ? "#4FFFB0" : "#FF6B7F",
+                      border: `1px solid ${a.correct ? "#3DA873" : "#8B2335"}`
+                    }}>
+                      {a.correct ? "✓" : "✗"}
+                    </div>
+                    <span style={{ color: "#4A7A58", fontSize: 13, flex: 1, lineHeight: 1.4 }}>
+                      Q{i + 1}: {QUESTIONS[i].question.length > 55 ? QUESTIONS[i].question.slice(0, 55) + "..." : QUESTIONS[i].question}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <button className="glow-btn" onClick={() => { AudioEngine.drumHit(); setShowSharePopup(true); }}
+                style={{
+                  fontFamily: FONT_DISPLAY, fontSize: 14, fontWeight: 700,
+                  letterSpacing: "0.12em", textTransform: "uppercase", padding: "14px 40px",
+                  background: "linear-gradient(135deg, #3DA873 0%, #1A5C3A 100%)",
+                  color: "#060E09", border: "none", borderRadius: 8, cursor: "pointer",
+                  transition: "all 0.3s ease", boxShadow: "0 4px 20px rgba(61,168,115,0.3)", marginTop: 8
+                }}>
+                Share Your Score
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+    // --- Mount (only addition to the original file) ---
+    import { createRoot } from "react-dom/client";
+    const bootEl = document.getElementById("boot");
+    if (bootEl) bootEl.remove();
+    createRoot(document.getElementById("root")).render(<NekzaliQuiz />);
+  </script>
+</body>
+</html>
