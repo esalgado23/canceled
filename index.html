@@ -9,7 +9,6 @@
     html, body { margin: 0; padding: 0; background: #060E09; }
     body { min-height: 100vh; }
     #root { min-height: 100vh; }
-    /* Simple pre-load screen shown while React/Babel boot */
     #boot {
       position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
       background: #060E09; color: #3DA873; font-family: Palatino, Georgia, serif;
@@ -21,21 +20,32 @@
   <div id="root"></div>
   <div id="boot">LOADING…</div>
 
-  <!-- React 18 + ReactDOM via import map (resolves the `import ... from "react"` in the JSX) -->
+  <!-- React 18 + ReactDOM + JSX runtime via import map -->
   <script type="importmap">
   {
     "imports": {
       "react": "https://esm.sh/react@18.3.1",
+      "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
       "react-dom/client": "https://esm.sh/react-dom@18.3.1/client"
     }
   }
   </script>
 
-  <!-- Babel Standalone: compiles JSX in the browser -->
+  <!-- Babel Standalone -->
   <script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
 
+  <!-- Register a preset that uses the automatic JSX runtime
+       (so we don't need `import React from "react"` in the source). -->
+  <script>
+    Babel.registerPreset('react-auto', {
+      presets: [
+        [Babel.availablePresets['react'], { runtime: 'automatic' }]
+      ]
+    });
+  </script>
+
   <!-- Original JSX component, byte-for-byte, followed only by the mount call -->
-  <script type="text/babel" data-type="module" data-presets="react">
+  <script type="text/babel" data-type="module" data-presets="react-auto">
 import { useState, useEffect, useRef } from "react";
 
 const AudioEngine = (() => {
