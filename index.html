@@ -20,7 +20,6 @@
   <div id="root"></div>
   <div id="boot">LOADING…</div>
 
-  <!-- React 18 + ReactDOM + JSX runtime via import map -->
   <script type="importmap">
   {
     "imports": {
@@ -31,11 +30,8 @@
   }
   </script>
 
-  <!-- Babel Standalone -->
   <script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
 
-  <!-- Register a preset that uses the automatic JSX runtime
-       (so we don't need `import React from "react"` in the source). -->
   <script>
     Babel.registerPreset('react-auto', {
       presets: [
@@ -44,7 +40,6 @@
     });
   </script>
 
-  <!-- Original JSX component, byte-for-byte, followed only by the mount call -->
   <script type="text/babel" data-type="module" data-presets="react-auto">
 import { useState, useEffect, useRef } from "react";
 
@@ -369,7 +364,7 @@ const SharePopup = ({ onClose }) => (
         color: "#060E09", border: "none", borderRadius: 8,
         cursor: "pointer", transition: "all 0.3s ease"
       }}>
-        Fair Enough
+        OK
       </button>
     </div>
   </div>
@@ -482,6 +477,15 @@ export default function NekzaliQuiz() {
         setAnswered(false);
         setTransitioning(false);
       } else {
+        // Send result to Google Sheets (fire-and-forget, no-cors avoids CORS issues)
+        try {
+          const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyxvb8BdpJS9F1tWEfp70lJKJqlkBZA7V0UEM1UXgUtcSgpwO049SAfdJykqUnDkaxjFQ/exec";
+          const params = new URLSearchParams({
+            name: name,
+            score: `${score}/${QUESTIONS.length}`
+          });
+          fetch(`${APPS_SCRIPT_URL}?${params.toString()}`, { method: "GET", mode: "no-cors" }).catch(() => {});
+        } catch (e) { /* ignore */ }
         setPhase("results");
         setTransitioning(false);
         setTimeout(() => AudioEngine.victory(), 300);
@@ -886,7 +890,7 @@ export default function NekzaliQuiz() {
   );
 }
 
-    // --- Mount (only addition to the original file) ---
+    // --- Mount ---
     import { createRoot } from "react-dom/client";
     const bootEl = document.getElementById("boot");
     if (bootEl) bootEl.remove();
